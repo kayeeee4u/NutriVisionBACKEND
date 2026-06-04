@@ -1,0 +1,34 @@
+# ── Kredensial & Konfigurasi Sensitif ──────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.*
+
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Log files ────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Upload folder (file gambar user, tidak perlu di-commit) ──────────────────
+uploads/
+
+# ── OS / Editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ── Build / Cache ─────────────────────────────────────────────────────────────
+dist/
+.cache/
+
+# ── Model files besar (jangan commit ke Git, terlalu besar) ──────────────────
+saved_model1/
+saved_model1.zip
+*.zip
+ml_server/saved_model1/
