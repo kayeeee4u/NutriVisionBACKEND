@@ -1,4 +1,4 @@
-// TensorFlow TFJS removed (model dijalankan di Flask Hugging Face Space)
+
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +6,6 @@ const https = require('https');
 const http = require('http');
 const nutritionService = require('./nutritionService');
 
-// Pastikan di Railway di-set ke: https://kayeeee4u-nutrivision-ml.hf.space
 const ML_SERVER_URL = process.env.HF_API_URL || 'https://kayeeee4u-nutrivision-ml.hf.space';
 
 class MLService {
