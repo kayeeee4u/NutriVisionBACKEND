@@ -10,13 +10,32 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors({
-  origin: [
+// CORS Configuration - Can be updated via Environment Variables
+const getAllowedOrigins = () => {
+  const origins = [
     'http://localhost:3000', 
     'http://localhost:5173', // Local development
-    process.env.FRONTEND_URL || 'https://nutrivision.vercel.app', // URL frontend production
-    /\.vercel\.app$/ // Allow all Vercel subdomains
-  ], 
+  ];
+  
+  // Add production frontend URL from environment variable
+  if (process.env.FRONTEND_URL) {
+    origins.push(process.env.FRONTEND_URL);
+  }
+  
+  // Add additional origins from environment (comma-separated)
+  if (process.env.ADDITIONAL_CORS_ORIGINS) {
+    const additionalOrigins = process.env.ADDITIONAL_CORS_ORIGINS.split(',').map(origin => origin.trim());
+    origins.push(...additionalOrigins);
+  }
+  
+  // Always allow all Vercel subdomains as fallback
+  origins.push(/\.vercel\.app$/);
+  
+  return origins;
+};
+
+app.use(cors({
+  origin: getAllowedOrigins(),
   credentials: true
 }));
 app.use(express.json());
@@ -27,30 +46,48 @@ app.use('/uploads', express.static('uploads'));
 
 // MongoDB Connection
 const connectDB = async () => {
-  // Try direct connection first (bypasses DNS SRV issues), then fallback to SRV
+  // Connection options dengan prioritas berbeda untuk development vs production
   const connectionOptions = [
     { 
       uri: process.env.MONGODB_URI, 
-      name: 'Direct hostnames (bypass DNS SRV)',
+      name: 'Primary Database Connection',
       options: {
-        serverSelectionTimeoutMS: 3000, // Reduced to 3 seconds
-        socketTimeoutMS: 5000,
-        connectTimeoutMS: 3000
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 10000,
+        connectTimeoutMS: 5000,
+        maxPoolSize: 10,
+        retryWrites: true
+      }
+    },
+    { 
+      uri: process.env.MONGODB_URI_ATLAS, 
+      name: 'Atlas Direct Connection',
+      options: {
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 10000,
+        connectTimeoutMS: 5000,
+        maxPoolSize: 10,
+        retryWrites: true
       }
     },
     { 
       uri: process.env.MONGODB_URI_SRV, 
-      name: 'SRV record (standard)',
+      name: 'Atlas SRV Connection',
       options: {
-        serverSelectionTimeoutMS: 3000, // Reduced to 3 seconds
-        socketTimeoutMS: 5000,
-        connectTimeoutMS: 3000
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 10000,
+        connectTimeoutMS: 5000,
+        maxPoolSize: 10,
+        retryWrites: true
       }
     }
   ];
 
   for (const { uri, name, options } of connectionOptions) {
-    if (!uri) continue;
+    if (!uri) {
+      console.log(`⏭️ Skipping ${name} - No URI provided`);
+      continue;
+    }
     
     try {
       console.log(`🔄 Trying ${name}...`);
@@ -60,6 +97,22 @@ const connectDB = async () => {
       console.log(`🍃 MongoDB Connected: ${conn.connection.host}`);
       console.log(`📁 Database Name: ${conn.connection.name}`);
       console.log(`✅ Connection method: ${name}`);
+      
+      // Check if we have food data
+      try {
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const collectionNames = collections.map(c => c.name);
+        console.log(`📦 Available collections: ${collectionNames.join(', ')}`);
+        
+        // Check for existing food data
+        if (collectionNames.includes('foodnutritions')) {
+          const count = await mongoose.connection.db.collection('foodnutritions').countDocuments();
+          console.log(`🍽️ Found ${count} food records in database`);
+        }
+      } catch (err) {
+        console.log('📋 Could not check collections, but connection is OK');
+      }
+      
       return; // Success, exit function
       
     } catch (error) {
@@ -69,7 +122,9 @@ const connectDB = async () => {
   
   // All connections failed - don't block server startup
   console.log('⚠️ MongoDB connection failed - continuing without database');
-  console.log('💡 App will work with local data only');
+  console.log('💡 App will work with static nutrition data fallback');
+  console.log('🔧 Check your MongoDB connection settings in .env file');
+  console.log(`📍 Current NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
 };
 
 // Food Analysis Schema

@@ -1,4 +1,5 @@
 const FoodNutrition = require('../models/FoodNutrition');
+const DatasetMakanan = require('../models/DatasetMakanan'); // Dataset asli dari data scientist
 const mongoose = require('mongoose');
 
 class NutritionService {
@@ -11,27 +12,36 @@ class NutritionService {
       // Check if we have database connection first
       if (mongoose.connection.readyState !== 1) {
         console.log('🍽️ Database not connected, using static nutrition data');
-        this.initialized = true; // Mark as initialized with static data
+        this.initialized = true;
         return true;
       }
 
-      // Check if we have data in database
-      const count = await FoodNutrition.countDocuments().maxTimeMS(5000);
-      
-      if (count === 0) {
+      // Check original dataset from data scientist first
+      const datasetCount = await DatasetMakanan.countDocuments().maxTimeMS(5000);
+
+      if (datasetCount > 0) {
+        console.log(`🍽️ Dataset Makanan ready dengan ${datasetCount} makanan dari data scientist`);
+        this.initialized = true;
+        return true;
+      }
+
+      // Fallback to FoodNutrition collection if dataset not available  
+      const nutritionCount = await FoodNutrition.countDocuments().maxTimeMS(5000);
+
+      if (nutritionCount === 0) {
         console.log('🍽️ Database kosong, initializing dengan data dasar...');
         await this.seedDatabase();
       } else {
-        console.log(`🍽️ Database nutrition ready dengan ${count} makanan`);
+        console.log(`🍽️ Nutrition Database ready dengan ${nutritionCount} makanan`);
       }
-      
+
       this.initialized = true;
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize nutrition service:', error.message);
       console.log('🔄 Using static nutrition data as fallback');
-      this.initialized = true; // Still mark as initialized but with static data
-      return true; // Return true so server can continue
+      this.initialized = true;
+      return true;
     }
   }
 
@@ -234,13 +244,13 @@ class NutritionService {
       }
 
       const foods = await FoodNutrition.findByVisualCharacteristics(imageCharacteristics);
-      
+
       if (foods && foods.length > 0) {
         // Return random food from matches untuk variasi
         const randomFood = foods[Math.floor(Math.random() * foods.length)];
         return randomFood;
       }
-      
+
       return null;
     } catch (error) {
       console.error('❌ Error finding food by visual:', error.message);
@@ -254,6 +264,13 @@ class NutritionService {
         return [];
       }
 
+      // Search in dataset makanan first
+      const datasetResults = await DatasetMakanan.fuzzySearch(keywords);
+      if (datasetResults.length > 0) {
+        return datasetResults.map(food => food.toAPIFormat());
+      }
+
+      // Fallback to FoodNutrition collection
       const foods = await FoodNutrition.searchByKeywords(keywords);
       return foods;
     } catch (error) {
@@ -268,7 +285,7 @@ class NutritionService {
     }
 
     const multiplier = servingGrams / 100; // Database nutrition adalah per 100g
-    
+
     return {
       carbs: Math.round(foodData.nutrition.carbohydrates * multiplier),
       protein: Math.round(foodData.nutrition.protein * multiplier),
@@ -284,7 +301,7 @@ class NutritionService {
   estimateVeggieContent(foodData, servingGrams) {
     // Estimasi sayuran berdasarkan kategori makanan
     const multiplier = servingGrams / 100;
-    
+
     if (foodData.category === 'vegetable') {
       return Math.round(foodData.nutrition.fiber * 20 * multiplier); // High veggie
     } else if (foodData.subCategory === 'salad' || foodData.subCategory === 'soup') {
@@ -292,7 +309,7 @@ class NutritionService {
     } else if (foodData.category === 'protein' || foodData.category === 'grain') {
       return Math.round(15 * multiplier); // Low veggie (garnish)
     }
-    
+
     return Math.round(25 * multiplier); // Default
   }
 
@@ -308,6 +325,20 @@ class NutritionService {
         return [];
       }
 
+      // Try dataset makanan first (dari data scientist)
+      const datasetFoods = await DatasetMakanan.find().limit(50);
+      if (datasetFoods.length > 0) {
+        return datasetFoods.map(food => {
+          const apiFormat = food.toAPIFormat();
+          return {
+            foodId: apiFormat.foodId,
+            name: apiFormat.name,
+            category: apiFormat.category
+          };
+        });
+      }
+
+      // Fallback to FoodNutrition collection
       return await FoodNutrition.find().select('foodId name category nutrition healthScore');
     } catch (error) {
       console.error('❌ Error getting all foods:', error.message);
@@ -318,32 +349,61 @@ class NutritionService {
   async getNutritionByLabel(foodLabel) {
     try {
       if (!this.initialized || mongoose.connection.readyState !== 1) {
-        // Fallback to static data if database not available
         return this.getStaticNutritionData(foodLabel);
       }
 
-      // Query database by foodId (which matches foodLabel)
-      const food = await FoodNutrition.findOne({ foodId: foodLabel });
-      
+      // Try to find in dataset makanan first (dari data scientist)
+      let food = await this.searchInDatasetMakanan(foodLabel);
       if (food) {
-        console.log(`✅ Found nutrition data for: ${food.name.indonesian}`);
+        console.log(`✅ Found nutrition data in dataset: ${food.name.indonesian}`);
+        return food;
+      }
+
+      // Try FoodNutrition collection as fallback
+      food = await FoodNutrition.findOne({ foodId: foodLabel });
+
+      if (food) {
+        console.log(`✅ Found nutrition data: ${food.name.indonesian}`);
         return food;
       } else {
-        // Try search by keywords if exact match not found
+        // Try search by keywords
         const searchResults = await this.searchFood(foodLabel);
         if (searchResults.length > 0) {
           console.log(`✅ Found similar food: ${searchResults[0].name.indonesian}`);
           return searchResults[0];
         }
       }
-      
+
       // Return fallback data if nothing found
       console.log(`⚠️ No data found for: ${foodLabel}, using fallback`);
       return this.getStaticNutritionData(foodLabel);
-      
+
     } catch (error) {
       console.error('❌ Error getting nutrition by label:', error.message);
       return this.getStaticNutritionData(foodLabel);
+    }
+  }
+
+  async searchInDatasetMakanan(query) {
+    try {
+      // Try exact match first
+      let results = await DatasetMakanan.find({
+        food_name: new RegExp(query, 'i')
+      }).limit(1);
+
+      if (results.length === 0) {
+        // Try fuzzy search
+        results = await DatasetMakanan.fuzzySearch(query);
+      }
+
+      if (results.length > 0) {
+        return results[0].toAPIFormat();
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Error searching dataset makanan:', error.message);
+      return null;
     }
   }
 
@@ -358,7 +418,7 @@ class NutritionService {
         healthScore: 65
       },
       ayam_goreng: {
-        foodId: 'ayam_goreng', 
+        foodId: 'ayam_goreng',
         name: { indonesian: 'Ayam Goreng', english: 'Fried Chicken' },
         category: 'protein',
         nutrition: { carbohydrates: 0, protein: 31.0, fat: 15.3, fiber: 0, calories: 250 },
@@ -367,7 +427,7 @@ class NutritionService {
       gado_gado: {
         foodId: 'gado_gado',
         name: { indonesian: 'Gado-Gado', english: 'Indonesian Salad' },
-        category: 'vegetable', 
+        category: 'vegetable',
         nutrition: { carbohydrates: 12.5, protein: 4.8, fat: 8.9, fiber: 3.2, calories: 136 },
         healthScore: 85
       },

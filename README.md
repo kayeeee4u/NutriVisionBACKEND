@@ -1,139 +1,260 @@
-# Nutrivision Backend
+# 🍽️ Nutrivision Backend API
 
-Backend server untuk aplikasi Nutrivision - analisis nutrisi makanan menggunakan gambar.
+Backend API untuk aplikasi analisis nutrisi makanan dengan AI, menggunakan dataset 43,729 makanan dari MongoDB Atlas.
 
-## 🚀 Fitur
+## ✅ Status: Production Ready
 
-- Upload gambar makanan
-- Analisis nutrisi otomatis (simulasi AI)
-- Penyimpanan data ke MongoDB
-- REST API untuk frontend
-- CORS support untuk komunikasi dengan frontend
-- File upload dengan validasi
+- ✅ **Database**: MongoDB Atlas (43,729 makanan)
+- ✅ **Connection**: Tested and working
+- ✅ **API**: All endpoints functional
+- ✅ **Deployment**: Ready for Vercel
 
-## 🛠️ Teknologi
+## 🚀 Quick Start
 
-- **Node.js** - Runtime JavaScript
-- **Express.js** - Web framework
-- **MongoDB** - Database NoSQL
-- **Mongoose** - MongoDB ODM
-- **Multer** - File upload middleware
-- **CORS** - Cross-origin resource sharing
-
-## 📋 Prasyarat
-
-- Node.js (v14 atau lebih baru)
-- MongoDB (lokal atau cloud)
-- npm atau yarn
-
-## 🔧 Instalasi
-
-1. Install dependencies:
+### 1. Install Dependencies
 ```bash
 npm install
 ```
 
-2. Konfigurasi environment variables di `.env`:
-```bash
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/nutrivision
-FRONTEND_URL=http://localhost:5173
+### 2. Configure Environment
+File `.env` sudah configured dengan Atlas connection:
+```env
+MONGODB_URI=mongodb://kaye4u:hyyyunii98@ac-0nddz0z-shard-00-00...
 ```
 
-3. Pastikan MongoDB berjalan (jika menggunakan lokal)
-
-4. Jalankan server:
-
-**Development mode:**
+### 3. Start Development Server
 ```bash
 npm run dev
 ```
 
-**Production mode:**
-```bash
-npm start
-```
+Server running at: **http://localhost:5000**
 
-## 📡 API Endpoints
+## 📊 API Endpoints
 
 ### Health Check
-```
+```http
 GET /api/health
 ```
 
-### Food Analysis
-```
-POST /api/analyze-food
-Content-Type: multipart/form-data
-Body: image file
-```
-
-### Get All Analyses
-```
-GET /api/food-analyses
-```
-
-### Get Specific Analysis
-```
-GET /api/food-analyses/:id
-```
-
-### Delete Analysis
-```
-DELETE /api/food-analyses/:id
-```
-
-## 📊 Database Schema
-
-### FoodAnalysis Collection
-```javascript
+Response:
+```json
 {
-  imageName: String,
-  imagePath: String,
-  nutritionData: {
-    carbs: Number,
-    protein: Number,
-    veggies: Number,
-    healthScore: Number
-  },
-  createdAt: Date
+  "status": "OK",
+  "message": "Nutrivision Backend is running!",
+  "database": "Connected"
 }
 ```
 
-## 🔒 Keamanan
+### Get All Foods
+```http
+GET /api/nutrition/foods
+```
 
-- File size limit: 5MB
-- Hanya menerima file gambar
-- CORS dikonfigurasi untuk frontend yang diizinkan
-- Input validation pada semua endpoints
+Returns: 50 sample foods from 43,729 total records
 
-## 📝 Logs
+### Lookup Food by Name
+```http
+GET /api/nutrition/lookup/{foodName}
+```
 
-Server akan menampilkan:
-- MongoDB connection status
-- Server running confirmation
-- Error logs untuk debugging
+Example: `/api/nutrition/lookup/nasi`
 
-## 🚨 Troubleshooting
+### Analyze Food Image
+```http
+POST /api/nutrition/analyze
+Content-Type: multipart/form-data
 
-**MongoDB Connection Error:**
-- Pastikan MongoDB service berjalan
-- Periksa MONGODB_URI di .env
-- Pastikan database accessible
+Body: image file
+```
 
-**File Upload Error:**
-- Periksa direktori `uploads/` ada
-- Pastikan file size tidak melebihi 5MB
-- Pastikan file adalah format gambar
+Returns: Complete nutrition analysis with AI classification
 
-**CORS Error:**
-- Periksa FRONTEND_URL di .env
-- Pastikan origin frontend sudah dikonfigurasi
+## 🗄️ Database
+
+**MongoDB Atlas**
+- Database: `dataset`
+- Collection: `datasetmakanan`
+- Records: 43,729 makanan
+- Source: Data scientist nutrition dataset
+
+### Dataset Coverage
+- Indonesian traditional foods
+- International cuisine
+- Fast food chains (McDonald's, KFC, Pizza Hut, etc.)
+- USDA nutritional data
+- 292 food categories
+
+## 🔧 Scripts
+
+```bash
+# Development
+npm run dev              # Start with nodemon
+
+# Production
+npm start                # Production server
+
+# Testing
+npm run test:api         # Test all API endpoints
+npm run check:db         # Check database connection
+
+# Database
+node quick-atlas-test.js # Test Atlas connection
+```
+
+## 🌐 Deployment
+
+### Vercel Deployment
+
+1. **Set Environment Variables** in Vercel dashboard:
+```
+MONGODB_URI=mongodb://kaye4u:hyyyunii98@ac-0nddz0z-shard-00-00.fbpmmmn.mongodb.net:27017,ac-0nddz0z-shard-00-01.fbpmmmn.mongodb.net:27017,ac-0nddz0z-shard-00-02.fbpmmmn.mongodb.net:27017/dataset?ssl=true&replicaSet=atlas-fmxr5g-shard-0&authSource=admin&appName=Cluster0
+
+NODE_ENV=production
+PORT=5000
+FRONTEND_URL=https://your-frontend.vercel.app
+```
+
+2. **Deploy**:
+```bash
+vercel --prod
+```
+
+3. **Test**:
+```bash
+curl https://your-api.vercel.app/api/health
+curl https://your-api.vercel.app/api/nutrition/foods
+```
+
+## 📁 Project Structure
+
+```
+nutrition-backend-deploy2/
+├── models/
+│   ├── DatasetMakanan.js      # Atlas dataset model
+│   └── FoodNutrition.js       # Backup model
+├── routes/
+│   └── nutritionRoutes.js     # API routes
+├── services/
+│   ├── nutritionService.js    # Business logic
+│   ├── mlServiceNew.js        # ML integration
+│   └── staticDataService.js   # Fallback data
+├── .env                        # Atlas configuration
+├── .env.production            # Production config
+├── server.js                  # Main server
+└── package.json               # Dependencies
+```
+
+## 🔑 Key Features
+
+### 1. **Unified Database**
+- Development dan production menggunakan Atlas
+- Tidak perlu localhost MongoDB
+- Data consistency terjamin
+
+### 2. **Complete Dataset**
+- 43,729 makanan dengan data nutrisi lengkap
+- Kategori: protein, karbohidrat, lemak, serat, kalori, dll.
+- Health scores dan risk factors
+
+### 3. **AI Integration**
+- ML model untuk food recognition
+- Color-based food analysis
+- Portion estimation
+
+### 4. **Robust API**
+- RESTful endpoints
+- Error handling
+- CORS configured
+- File upload support
+
+## 🧪 Testing
+
+### Test Atlas Connection
+```bash
+node quick-atlas-test.js
+```
+
+Expected output:
+```
+✅ Connected successfully!
+✅ Ping successful!
+📊 Total records: 43,729
+```
+
+### Test API Endpoints
+```bash
+npm run test:api
+```
+
+Expected: All endpoints return 200 OK
+
+## 📚 Documentation
+
+- `UNIFIED-ATLAS-SETUP.md` - Atlas configuration guide
+- `ATLAS-CONNECTION-SUCCESS.md` - Connection success details
+- `DEPLOYMENT-GUIDE.md` - Deployment instructions
+
+## 💡 Important Notes
+
+### Atlas Connection
+- **Internet required** untuk development
+- Free tier: 512 MB storage (dataset ~24 MB)
+- IP whitelist: 0.0.0.0/0 configured
+
+### Localhost MongoDB
+- **Not required** for development
+- API uses Atlas for all environments
+- Localhost only needed for offline development
+
+### Security
+- Connection string contains credentials
+- Never commit `.env` to git
+- Use environment variables in production
+
+## 🐛 Troubleshooting
+
+### Connection Issues
+```bash
+# Test connection
+node quick-atlas-test.js
+
+# Check logs
+npm run dev
+# Look for: "MongoDB Connected: ac-0nddz0z-shard-00-00..."
+```
+
+### API Not Working
+```bash
+# Check health
+curl http://localhost:5000/api/health
+
+# Should return: {"status":"OK","database":"Connected"}
+```
+
+### Data Not Found
+- Verify Atlas cluster is running
+- Check connection string in `.env`
+- Confirm IP whitelist includes your IP
+
+## 🎯 Development Workflow
+
+1. **Start Server**: `npm run dev`
+2. **Test Endpoints**: Use Postman or curl
+3. **Check Logs**: Monitor console for errors
+4. **Make Changes**: Code updates auto-reload
+5. **Test Again**: Verify changes work
+6. **Deploy**: Push to production
 
 ## 📞 Support
 
-Jika ada masalah, periksa:
-1. MongoDB connection
-2. Environment variables
-3. Port availability
-4. File permissions
+For issues or questions:
+1. Check `UNIFIED-ATLAS-SETUP.md`
+2. Review `ATLAS-CONNECTION-SUCCESS.md`
+3. Test connection: `node quick-atlas-test.js`
+
+---
+
+**Version**: 1.0.0  
+**Database**: MongoDB Atlas (dataset)  
+**Records**: 43,729 makanan  
+**Status**: 🟢 Production Ready

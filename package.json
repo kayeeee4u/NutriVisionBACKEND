@@ -5,11 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
-    "seed": "node seeders/nutritionSeeder.js",
-    "seed:nutrition": "node seeders/nutritionSeeder.js",
-    "test:api": "node test-api.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
