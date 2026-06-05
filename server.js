@@ -22,13 +22,11 @@ const getAllowedOrigins = () => {
     origins.push(process.env.FRONTEND_URL);
   }
   
-  // Add additional origins from environment (comma-separated)
   if (process.env.ADDITIONAL_CORS_ORIGINS) {
     const additionalOrigins = process.env.ADDITIONAL_CORS_ORIGINS.split(',').map(origin => origin.trim());
     origins.push(...additionalOrigins);
   }
   
-  // Always allow all Vercel subdomains as fallback
   origins.push(/\.vercel\.app$/);
   
   return origins;
@@ -415,7 +413,7 @@ const startServer = async () => {
   });
   
   // Start server immediately
-  app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0",() => {
     console.log(`🚀 Nutrivision Backend running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
     console.log(`🍕 New nutrition API: http://localhost:${PORT}/api/nutrition/analyze`);
