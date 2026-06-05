@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const nutritionRoutes = require('./routes/nutritionRoutes');
 require('dotenv').config();
-
+const mlService = require('./services/mlServiceNew');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
